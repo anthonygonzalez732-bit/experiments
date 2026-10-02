@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Christmas Wishes · Deseos de Navidad</title>
+<style>
+:root{--bg:#fbf6ee;--card:#fff;--ink:#2a2220;--mute:#6f625c;--red:#b3262e;--green:#1f6b45;--line:#e6d9ca;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17110f;--card:#241a17;--ink:#f4ebe4;--mute:#b8a79e;--red:#e4545c;--green:#58b886;--line:#3a2c27}}
+:root[data-theme="dark"]{--bg:#17110f;--card:#241a17;--ink:#f4ebe4;--mute:#b8a79e;--red:#e4545c;--green:#58b886;--line:#3a2c27}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.45 system-ui,sans-serif}
+main{max-width:620px;margin:0 auto;padding:16px 14px 60px}
+.lang{display:flex;gap:8px;justify-content:center;margin-bottom:6px}
+.lang button{background:transparent;color:var(--green);border:2px solid var(--green);padding:8px 16px}
+.lang button.on{background:var(--green);color:#fff}
+h1{font:700 2rem Georgia,serif;margin:6px 0 2px;color:var(--red);text-align:center}
+.sub{text-align:center;color:var(--mute);margin:0 0 18px}
+h2{font:700 1.25rem Georgia,serif;color:var(--green);margin:22px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+input{width:100%;padding:14px;border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:inherit;margin-top:8px}
+input.nm{font-weight:700;margin:0 0 8px}
+button{font:700 1rem system-ui,sans-serif;border:0;border-radius:12px;padding:14px 18px;background:var(--red);color:#fff;cursor:pointer}
+button.big{width:100%;background:var(--green);font-size:1.05rem}
+button.x{background:transparent;color:var(--mute);padding:6px 12px;font-size:1.2rem}
+button.link{background:transparent;color:var(--mute);padding:8px 0;font-weight:600;font-size:.9rem;text-decoration:underline}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;gap:8px;align-items:flex-start;padding:12px 0;border-bottom:1px dashed var(--line)}
+li:last-child{border:0}
+li .t{flex:1;min-width:0;overflow-wrap:anywhere}
+li .n{display:block;color:var(--mute);font-size:.95rem;margin-top:2px}
+.empty{color:var(--mute);padding:6px 0}
+.hide{display:none}
+.msg{text-align:center;color:var(--mute);font-size:.95rem;min-height:1.4em;margin:4px 0}
+.who{color:var(--green);font-weight:700;font-size:1.1rem;margin:0 0 4px}
+.fam{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--red);border-radius:16px;padding:14px 16px;margin-bottom:14px}
+.fam .who{font-size:1.25rem;margin-bottom:8px}
+.fam li{padding:12px 0;gap:10px}
+.fam li::before{content:'🎁';flex:none}
+.fam li .t span:first-child{display:block;font-size:1.05rem;font-weight:600}
+.fam li .n{margin-top:2px;line-height:1.35}
+.fam.me{border-left-color:var(--green)}
+</style>
+</head>
+<body>
+<main>
+  <div class="lang">
+    <button id="l-en">English</button><button id="l-es">Español</button>
+  </div>
+  <h1 id="title"></h1>
+  <p class="sub" id="sub"></p>
+  <p class="msg" id="msg"></p>
+
+  <div id="people"></div>
+  <button class="big" id="addp"></button>
+
+  <section id="boardwrap" class="hide">
+    <h2 id="bt"></h2>
+    <div id="board"></div>
+  </section>
+  <p class="msg hide" id="signin"></p>
+</main>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var T={
+    en:{title:'🎄 Christmas Wishes',sub:'Write what you would love to get. Everyone can see the lists.',name:'Name',who:'Who is this list for?',wish:'Write a gift idea',det:'Size, color, or link (optional)',add:'Add',addp:'+ Add another person',none:'No ideas yet. Type one above.',bt:"Everyone's wishes",empty:'Nobody has added wishes yet.',you:'you',some:'Someone',err:"Couldn't save. Your list is still on this phone.",sign:"To see everyone's lists, open this page while signed in to Claude.",del:'Remove this person and their list?',rm:'Remove this person',saved:'Saved ✓'},
+    es:{title:'🎄 Deseos de Navidad',sub:'Escribe lo que te gustaría recibir. Todos pueden ver las listas.',name:'Nombre',who:'¿Para quién es esta lista?',wish:'Escribe una idea de regalo',det:'Talla, color o enlace (opcional)',add:'Agregar',addp:'+ Agregar otra persona',none:'Aún no hay ideas. Escribe una arriba.',bt:'Deseos de todos',empty:'Nadie ha agregado deseos todavía.',you:'tú',some:'Alguien',err:'No se pudo guardar. Tu lista sigue en este teléfono.',sign:'Para ver las listas de todos, abre esta página con tu sesión de Claude iniciada.',del:'¿Quitar a esta persona y su lista?',rm:'Quitar a esta persona',saved:'Guardado ✓'}
+  };
+  var KEY='xmas-family-v2',LK='xmas-lang',lang='en',people=[],others=[],push=null,pt=null,hasDb=false;
+  try{lang=localStorage.getItem(LK)||((navigator.language||'en').slice(0,2)==='es'?'es':'en')}catch(e){}
+  var t=function(k){return T[lang][k]};
+  function mk(tag,txt,cls){var e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e}
+  function blank(){return{name:'',items:[]}}
+  try{var r=localStorage.getItem(KEY);if(r)people=JSON.parse(r)}catch(e){}
+  if(!people.length)people=[blank()];
+
+  function say(m){var e=$('msg');e.textContent=m||'';if(m==='saved'||m===t('saved')){setTimeout(function(){if(e.textContent===t('saved'))e.textContent=''},2000)}}
+  function save(){
+    try{localStorage.setItem(KEY,JSON.stringify(people))}catch(e){}
+    if(push){clearTimeout(pt);pt=setTimeout(push,700)}
+  }
+
+  function renderPeople(){
+    var box=$('people');box.textContent='';
+    people.forEach(function(p,pi){
+      var c=mk('div',null,'card');
+      c.appendChild(mk('div',t('who'),'who'));
+      var nm=mk('input',null,'nm');nm.placeholder=t('name');nm.maxLength=40;nm.value=p.name||'';
+      nm.oninput=function(){p.name=nm.value;save()};
+      c.appendChild(nm);
+      var ul=mk('ul');
+      if(!p.items.length)ul.appendChild(mk('li',t('none'),'empty'));
+      p.items.forEach(function(it,ii){
+        var li=mk('li'),d=mk('div',null,'t');
+        d.appendChild(mk('strong',it.item));
+        if(it.note)d.appendChild(mk('span',it.note,'n'));
+        var x=mk('button','✕','x');x.setAttribute('aria-label','✕');
+        x.onclick=function(){p.items.splice(ii,1);save();renderPeople()};
+        li.appendChild(d);li.appendChild(x);ul.appendChild(li);
+      });
+      c.appendChild(ul);
+      var wi=mk('input');wi.placeholder=t('wish');wi.maxLength=120;
+      var di=mk('input');di.placeholder=t('det');di.maxLength=300;
+      var go=function(){var v=wi.value.trim();if(!v){wi.focus();return}p.items.push({item:v,note:di.value.trim()});save();renderPeople()};
+      wi.onkeydown=di.onkeydown=function(e){if(e.key==='Enter')go()};
+      var ab=mk('button',t('add'));ab.style.cssText='width:100%;margin-top:10px';ab.onclick=go;
+      c.appendChild(wi);c.appendChild(di);c.appendChild(ab);
+      if(people.length>1||p.items.length||p.name){
+        var rb=mk('button',t('rm'),'link');
+        rb.onclick=function(){if(confirm(t('del'))){people.splice(pi,1);if(!people.length)people=[blank()];save();renderPeople()}};
+        c.appendChild(rb);
+      }
+      box.appendChild(c);
+    });
+  }
+
+  function renderBoard(){
+    var b=$('board');b.textContent='';var n=0;
+    others.forEach(function(p){
+      if(!p.items||!p.items.length)return;n++;
+      var f=mk('div',null,'fam'+(p.mine?' me':''));f.appendChild(mk('div',(p.name||t('some'))+(p.mine?' ('+t('you')+')':''),'who'));
+      var ul=mk('ul');
+      p.items.forEach(function(it){var li=mk('li'),d=mk('div',null,'t');d.appendChild(mk('span',it.item));if(it.note)d.appendChild(mk('span',it.note,'n'));li.appendChild(d);ul.appendChild(li)});
+      f.appendChild(ul);b.appendChild(f);
+    });
+    if(!n)b.appendChild(mk('div',t('empty'),'empty card'));
+  }
+
+  function renderAll(){
+    document.documentElement.lang=lang;
+    $('l-en').className=lang==='en'?'on':'';$('l-es').className=lang==='es'?'on':'';
+    $('title').textContent=t('title');$('sub').textContent=t('sub');$('addp').textContent=t('addp');
+    $('bt').textContent=t('bt');$('signin').textContent=t('sign');
+    $('msg').textContent='';
+    renderPeople();renderBoard();
+  }
+  function setLang(l){lang=l;try{localStorage.setItem(LK,l)}catch(e){}renderAll()}
+  $('l-en').onclick=function(){setLang('en')};
+  $('l-es').onclick=function(){setLang('es')};
+  $('addp').onclick=function(){people.push(blank());save();renderPeople();var ins=document.querySelectorAll('input.nm');if(ins.length)ins[ins.length-1].focus()};
+
+  renderAll();
+
+  (async function(){
+    try{
+      var db=window.claude&&claude.use?await claude.use('db'):null,user=window.claude&&claude.use?await claude.use('user'):null;
+      if(!db||!user){$('signin').classList.remove('hide');return}
+      hasDb=true;
+      var uid=String(await user.id()),mine=db.doc('wishes/'+uid);
+      push=function(){
+        var keep=people.filter(function(p){return p.name||p.items.length});
+        mine.set({people:keep,t:Date.now()}).then(function(){say(t('saved'))},function(){say(t('err'))});
+      };
+      try{
+        var m=await mine.get(),has=people.some(function(p){return p.name||p.items.length});
+        if(m.exists&&!has){var d=m.data();if(d.people&&d.people.length){people=d.people;try{localStorage.setItem(KEY,JSON.stringify(people))}catch(e){}renderPeople()}}
+        else if(has)push();
+      }catch(e){}
+      $('boardwrap').classList.remove('hide');
+      db.collection('wishes').onSnapshot(function(snap){
+        others=[];
+        snap.docs.forEach(function(ds){var d=ds.data()||{},me=ds.id===uid;(d.people||[]).forEach(function(p){others.push({name:p.name,items:p.items,mine:me})})});
+        renderBoard();
+      },function(){});
+    }catch(e){$('signin').classList.remove('hide')}
+  })();
+})();
+</script>
+</body>
+</html>
